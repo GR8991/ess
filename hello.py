@@ -5,7 +5,7 @@ from io import BytesIO
 import smtplib
 from email.message import EmailMessage
 
-st.set_page_config(page_title="Earthing Design Calculator", layout="centered")
+st.set_page_config(page_title="PGR-Earthing Design Calculator", layout="centered")
 st.title("⚡ PGR - Earthing Design Calculator")
 
 # Input Section
