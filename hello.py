@@ -107,7 +107,7 @@ receiver_email = st.text_input("Enter email to receive report (leave blank to sk
 
 # Create document
 doc = Document()
-doc.add_heading("Earthing Design Report", level=0)
+doc.add_heading("PGR-Earthing Design Report", level=0)
 
 doc.add_heading("Input Parameters", level=1)
 table1 = doc.add_table(rows=1, cols=2)
