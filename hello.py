@@ -6,7 +6,7 @@ import smtplib
 from email.message import EmailMessage
 
 st.set_page_config(page_title="Earthing Design Calculator", layout="centered")
-st.title("⚡ Earthing Design Calculator")
+st.title("⚡ PGR - Earthing Design Calculator")
 
 # Input Section
 st.sidebar.header("Input Parameters")
