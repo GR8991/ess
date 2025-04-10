@@ -21,7 +21,7 @@ inputs = {
     "Lc - Total Earth Conductor (m)": st.sidebar.number_input("Lc - Total Earth Conductor (m)", value=300.0),
     "No. of Electrodes": st.sidebar.number_input("No. of Electrodes", min_value=1, step=1, value=30),
     "Length of Each Electrode (m)": st.sidebar.number_input("Length of Each Electrode (m)", value=3),
-    "Selected Grid Spacing (m)": st.sidebar.number_input("Selected Grid Spacing (m)", value=5.0),
+    "Selected Grid Spacing (m)": st.sidebar.number_input("Selected Grid Spacing (m)", value=0.1),
     "Area of Earth Mat (m²)": st.sidebar.number_input("Area of Earth Mat (m²)", value=400.0),
     "Depth of Buried Conductor (m)": st.sidebar.number_input("Depth of Buried Conductor (m)", value=0.6),
     "Perimeter of the Grid (m)": st.sidebar.number_input("Perimeter of the Grid (m)", value=80.0),
