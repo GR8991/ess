@@ -11,7 +11,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("Transformer Short Circuit Calculator 🔌")
+st.title("PGR_Transformer Short Circuit Calculator 🔌")
 st.markdown("Calculate fault current from transformer rating and impedance.")
 
 #st.set_page_config(page_title="Transformer Short‑Circuit Calculator", layout="wide")
