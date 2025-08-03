@@ -1,0 +1,179 @@
+class BESSDesign:
+    def __init__(self):
+        self.losses = {}
+        self.yearly_soh_percentages = []
+        self.total_energy_mwh = 0
+        self.usable_energy_mwh = 0
+        self.yearly_usable_energies = []
+
+    def get_basic_specs(self):
+        while True:
+            try:
+                self.mw = float(input("Enter MW: "))
+                self.mwh = float(input("Enter MWH: "))
+                break
+            except ValueError:
+                print("Please enter a valid number.")
+        self.p_rate = self.mw / self.mwh
+        self.hours = self.mwh / self.mw
+
+    def get_cell_specs(self):
+        self.cell_voltage = float(input("Enter cell voltage: "))
+        self.cell_ah = float(input("Enter the cell Ah: "))
+
+    def create_pack(self):
+        e = float(input("Enter no. of parallel connection for pack: "))
+        f = float(input("Enter no. of series connection for pack: "))
+        self.pack_kwh = (e * self.cell_ah * f * self.cell_voltage) / 1000
+
+    def create_rack(self):
+        g = float(input("Enter no. of parallel connection for rack: "))
+        h = float(input("Enter no. of series connection for rack: "))
+        self.rack_kwh = (g * self.cell_ah * h * self.cell_voltage) / 1000
+
+    def create_container(self):
+        i = float(input("Enter no. of racks for container: "))
+        self.container_mwh = (self.rack_kwh * i) / 1000
+
+    def create_unit(self):
+        k = float(input("Enter no. of containers connected to unit: "))
+        self.unit_mwh = k * self.container_mwh
+
+    def get_lifecycle_inputs(self):
+        self.cycles = float(input("Enter no. of cycles: "))
+        self.years = int(input("Enter no. of years: "))
+        self.dc_usable_ratio = self.get_percentage_input("Enter DC usable ratio")
+        self.calendar_degradation = self.get_percentage_input("Enter calendar degradation")
+
+        print(f"\nEnter SOH (State of Health in %) for each of the {self.years} years:")
+        self.yearly_soh_percentages = []
+        for year in range(1, self.years + 1):
+            soh = self.get_percentage_input(f"Year {year} SOH")
+            self.yearly_soh_percentages.append(soh)
+
+    def get_percentage_input(self, prompt):
+        while True:
+            try:
+                value = float(input(f"{prompt} (in %): "))
+                if 0 <= value <= 100:
+                    return value
+                else:
+                    print("Enter a valid percentage between 0 and 100.")
+            except ValueError:
+                print("Please enter a numeric value.")
+
+    def get_losses(self):
+        print("\nSelect the voltage level (kV): Options: 33, 66, 132, 220")
+        try:
+            voltage = int(input("Enter voltage level (kV): ").strip())
+        except ValueError:
+            print("Invalid input. Please enter a numeric voltage value.")
+            return
+
+        print("\nEnter the retained efficiency (not loss) in % for the following components:")
+        if voltage == 33:
+            self.losses = {
+                "DC cable": self.get_percentage_input("DC cable (e.g., 99.85 for 0.15% loss)"),
+                "LV AC cable": self.get_percentage_input("LV AC cable"),
+                "PCS efficiency": self.get_percentage_input("PCS efficiency"),
+                "LV transformer": self.get_percentage_input("LV transformer"),
+                "MV AC cable": self.get_percentage_input("MV AC cable"),
+                "Measurement": self.get_percentage_input("Measurement"),
+                "Availability": self.get_percentage_input("Availability")
+            }
+        elif voltage in [66, 132, 220]:
+            self.losses = {
+                "DC cable": self.get_percentage_input("DC cable"),
+                "LV AC cable": self.get_percentage_input("LV AC cable"),
+                "PCS efficiency": self.get_percentage_input("PCS efficiency"),
+                "LV transformer": self.get_percentage_input("LV transformer"),
+                "MV AC cable": self.get_percentage_input("MV AC cable"),
+                "MV transformer": self.get_percentage_input("MV transformer"),
+                "Transmission line": self.get_percentage_input("Transmission line"),
+                "Measurement": self.get_percentage_input("Measurement"),
+                "Availability": self.get_percentage_input("Availability")
+            }
+        else:
+            print("Invalid voltage selected. Choose from 33, 66, 132, or 220.")
+            self.losses = {}
+
+    def get_total_project_energy(self):
+        try:
+            num_units = int(input("Enter number of units deployed in project: "))
+            self.total_energy_mwh = self.unit_mwh * num_units
+        except ValueError:
+            print("Invalid input for number of units. Setting to 1 by default.")
+            self.total_energy_mwh = self.unit_mwh
+
+    def calculate_usable_soh_excluded(self):
+        if not self.yearly_soh_percentages:
+            print("SOH data not available. Please enter lifecycle inputs first.")
+            return
+
+        # Base retained efficiency (excluding SOH)
+        efficiency_product = 1.0
+        for key, val in self.losses.items():
+            efficiency_product *= (val / 100)
+
+        dc_usable = self.dc_usable_ratio / 100
+        calendar_multiplier = self.calendar_degradation / 100
+
+        usable_energy_base = (
+            self.total_energy_mwh *
+            dc_usable *
+            calendar_multiplier *
+            efficiency_product
+        )
+
+        self.yearly_usable_energies = []
+        print("\n===== Yearly Usable Energy After SOH Degradation =====")
+        print(f"{'Year':<10}{'SOH (%)':<15}{'Usable Energy (MWh)':<25}")
+        print("-" * 50)
+        for year, soh_percent in enumerate(self.yearly_soh_percentages, start=1):
+            soh_multiplier = soh_percent / 100
+            usable_energy = usable_energy_base * soh_multiplier
+            self.yearly_usable_energies.append(usable_energy)
+            print(f"{year:<10}{soh_percent:<15.2f}{usable_energy:<25.2f}")
+
+        # Save the first year's usable energy separately
+        self.usable_energy_mwh = self.yearly_usable_energies[0]
+
+    def display_summary(self):
+        print("\n===== SYSTEM SUMMARY =====")
+        print(f"MW: {self.mw}")
+        print(f"MWh: {self.mwh}")
+        print(f"Power Rate (MW/MWh): {self.p_rate}")
+        print(f"Hours of Operation (MWh/MW): {self.hours}")
+        print(f"Pack Energy (kWh): {self.pack_kwh}")
+        print(f"Rack Energy (kWh): {self.rack_kwh}")
+        print(f"Container Energy (MWh): {self.container_mwh}")
+        print(f"Unit Energy (MWh): {self.unit_mwh}")
+        print(f"Cycles: {self.cycles}")
+        print(f"Years: {self.years}")
+        print(f"DC Usable Ratio: {self.dc_usable_ratio}%")
+        print(f"Calendar Degradation: {self.calendar_degradation}%")
+
+        print("\n===== Efficiency Factors (not losses) (%) =====")
+        for name, val in self.losses.items():
+            print(f"{name}: {val}%")
+
+        print(f"\nTotal Energy Deployed (All Units): {self.total_energy_mwh:.2f} MWh")
+        #print(f"Usable Energy (SOH excluded) Year 1: {self.usable_energy_mwh:.2f} MWh")
+
+    def run(self):
+        self.get_basic_specs()
+        self.get_cell_specs()
+        self.create_pack()
+        self.create_rack()
+        self.create_container()
+        self.create_unit()
+        self.get_lifecycle_inputs()
+        self.get_losses()
+        self.get_total_project_energy()
+        self.calculate_usable_soh_excluded()
+        self.display_summary()
+
+
+if __name__ == "__main__":
+    bess = BESSDesign()
+    bess.run()
