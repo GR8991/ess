@@ -149,6 +149,54 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
 
+st.subheader("🧮 Conductor Sizing (Based on Fault Current)")
+
+# Initialize session state
+if "show_conductor_inputs" not in st.session_state:
+    st.session_state.show_conductor_inputs = False
+
+if st.button("🧾 Start Conductor Sizing"):
+    st.session_state.show_conductor_inputs = True
+
+if st.session_state.show_conductor_inputs:
+    st.markdown("### 🔢 Enter Conductor Parameters")
+
+    # Material selection and associated data
+    material_data = {
+        "Copper":    {"B": 234, "Qc": 3.45e-3, "delta_20": 17.241e-6},
+        "Aluminium": {"B": 228, "Qc": 2.5e-3,  "delta_20": 28.264e-6},
+        "Lead":      {"B": 230, "Qc": 1.45e-3, "delta_20": 214e-6},
+        "Steel":     {"B": 202, "Qc": 3.8e-3,  "delta_20": 138e-6},
+    }
+
+    # Step 1: Let user select material
+    selected_material = st.selectbox("Select Conductor Material", list(material_data.keys()))
+    B = material_data[selected_material]["B"]
+    Qc = material_data[selected_material]["Qc"]
+    delta_20 = material_data[selected_material]["delta_20"]
+
+    # Step 2: Ask for other required inputs
+    Isc = st.number_input("Short-circuit current Isc (A)", value=12000.0)
+    t = st.number_input("Fault duration t (s)", value=1.0)
+    Tm = st.number_input("Maximum temperature Tm (°C)", value=620.0)
+    Ta = st.number_input("Ambient temperature Ta (°C)", value=50.0)
+
+    # Display auto-filled constants for transparency
+    st.markdown(f"**Auto-filled Constants for {selected_material}:**")
+    st.markdown(f"- B = `{B}`")
+    st.markdown(f"- Qc = `{Qc}` (1/°C)")
+    st.markdown(f"- Resistivity at 20°C = `{delta_20}` Ω·m")
+
+    # Step 3: Compute conductor size
+    if st.button("Calculate Size"):
+        try:
+            log_term = math.log((B + Tm) / (B + Ta))
+            bb = Isc * math.sqrt(t) * math.sqrt(1 / ((Qc * (B + 20)) / delta_20 * log_term))
+            st.success(f"✅ Required Earth Conductor Cross-Sectional Area: **{bb:.2f} mm²**")
+        except Exception as e:
+            st.error(f"Calculation failed: {e}")
+
+
 if receiver_email:
     sender_email = "youremail@gmail.com"
     sender_password = "yourapppassword"
@@ -173,3 +221,5 @@ if receiver_email:
 
     except Exception as e:
         st.error(f"Failed to send email: {e}")
+
+
