@@ -10,6 +10,18 @@ st.title("⚡ PGR - Earthing Design Calculator")
 
 # Input Section
 st.sidebar.header("Input Parameters")
+
+# Ask user for type of earth conductor
+earth_conductor_type = st.sidebar.radio("Select Earth Electrode Type:", ["MS/GI Flat", "Rod"])
+
+if earth_conductor_type == "MS/GI Flat":
+    electrode_width = st.sidebar.number_input("Electrode Width (mm)", value=50.0)
+    electrode_thickness = st.sidebar.number_input("Electrode Thickness (mm)", value=6.0)
+    dia = (math.sqrt(4 * electrode_width * electrode_thickness / math.pi)) / 1000
+else:
+    rod_dia = st.sidebar.number_input("Rod Electrode Diameter (mm)", value=25.0)
+    dia = rod_dia / 1000
+
 inputs = {
     "Earth Resistance (Ω)": st.sidebar.number_input("Earth Resistance (Ω)", value=1.0),
     "Surface Type": st.sidebar.selectbox("Surface Type", ["Crushed", "Asphalt"]),
@@ -26,9 +38,7 @@ inputs = {
     "Depth of Buried Conductor (m)": st.sidebar.number_input("Depth of Buried Conductor (m)", value=0.6),
     "Perimeter of the Grid (m)": st.sidebar.number_input("Perimeter of the Grid (m)", value=80.0),
     "Max Length in X (m)": st.sidebar.number_input("Max Length in X (m)", value=20.0),
-    "Max Length in Y (m)": st.sidebar.number_input("Max Length in Y (m)", value=20.0),
-    "Electrode Width (mm)": st.sidebar.number_input("Electrode Width (mm)", value=50.0),
-    "Electrode Thickness (mm)": st.sidebar.number_input("Electrode Thickness (mm)", value=6.0)
+    "Max Length in Y (m)": st.sidebar.number_input("Max Length in Y (m)", value=20.0)
 }
 
 # Assign variables
@@ -48,8 +58,6 @@ h = inputs["Depth of Buried Conductor (m)"]
 p = inputs["Perimeter of the Grid (m)"]
 lx = inputs["Max Length in X (m)"]
 ly = inputs["Max Length in Y (m)"]
-width = inputs["Electrode Width (mm)"]
-Thick = inputs["Electrode Thickness (mm)"]
 
 # Intermediate Calculations
 Lr = ne * le
@@ -59,11 +67,9 @@ na = 2 * lc / p
 nb = math.sqrt(p / (4 * math.sqrt(area)))
 n = na * nb
 ki = 0.644 + 0.148 * n
-s = 1 / math.pi * (1 / (2 * h) + 1 / (le + h) + 1 / 3 * 1 - 0.5 ** (n - 2))
+s = 1 / math.pi * (1 / (2 * h) + 1 / (D + h) + 1 / D * 1 - 0.5 ** (n - 2))
 Ks_rounded = round(s, 4)
 lm = lc + (1.55 + 1.22 * (le / math.sqrt(lx ** 2 + ly ** 2))) * Lr
-Area_electrode = (width / 1000) * (Thick / 1000)
-dia = math.sqrt(4 * Area_electrode / math.pi)
 
 km = 1 / (2 * math.pi) * (
     math.log((D ** 2) / (16 * h * dia) + ((D + 2 * h) ** 2) / (8 * D * dia) - (h / (4 * dia))) +
@@ -85,27 +91,28 @@ Rg = (c * (1 / Lt + 1 / math.sqrt(20 * area) * (1 + 1 / (1 + h * math.sqrt(20 / 
 es = (c * IG * Ks_rounded * ki) / Ls * 1000
 em = (c * IG * km * ki) / lm * 1000
 
-# Results dictionary
 results = {
     "Touch Voltage (50kg)": f"{round(z_50, 2)} V",
     "Touch Voltage (70kg)": f"{round(p_70, 2)} V",
     "Step Voltage (50kg)": f"{round(y_50, 2)} V",
     "Step Voltage (70kg)": f"{round(x_70, 2)} V",
-    "IG (kA)": f"{IG:.3f}",
-    "Rg (Ω)": f"{Rg:.3f}",
-    "Step Potential": f"{es:.3f} V",
-    "Touch Potential": f"{em:.3f} V"
+    "IG (kA)": f"{IG:.2f}",
+    "Rg (Ω)": f"{Rg:.2f}",
+    "km (Ω)": f"{km:.2f}",
+    "lm (Ω)": f"{lm:.2f}",
+    "ki (Ω)": f"{ki:.2f}",
+    "ls (Ω)": f"{Ls:.2f}",
+    "ks (Ω)": f"{Ks_rounded:.2f}",
+    "Step Potential": f"{es:.2f} V",
+    "Touch Potential": f"{em:.2f} V"
 }
 
-# Display results in Streamlit
 st.subheader("📊 Results Summary")
 st.table(results)
 
-# Email option
 st.subheader("📧 Send Report to Email (Optional)")
 receiver_email = st.text_input("Enter email to receive report (leave blank to skip):")
 
-# Create document
 doc = Document()
 doc.add_heading("PGR-Earthing Design Report", level=0)
 
@@ -135,7 +142,6 @@ buffer = BytesIO()
 doc.save(buffer)
 buffer.seek(0)
 
-# Download button
 st.download_button(
     label="📥 Download Word Report",
     data=buffer,
@@ -143,10 +149,9 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
 
-# Send email if address is provided
 if receiver_email:
-    sender_email = "youremail@gmail.com"  # replace with your email
-    sender_password = "yourapppassword"   # replace with app password
+    sender_email = "youremail@gmail.com"
+    sender_password = "yourapppassword"
 
     try:
         msg = EmailMessage()
