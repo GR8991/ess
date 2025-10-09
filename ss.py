@@ -6,6 +6,7 @@ st.title("PGR-Ud & Uq Calculator for PCS (690V Base)")
 st.sidebar.header("Input Power Requirements")
 P_pcs = st.sidebar.number_input("Active Power P_pcs (MW)", value=50.0, format="%.3f")
 Q_pcs = st.sidebar.number_input("Reactive Power Q_pcs (MVAR)", value=20.0, format="%.3f")
+Voltage = st.sidebar.number_input("Base voltage (V)", value=20.0, format="%.3f")
 
 st.header("Calculation Steps")
 
@@ -52,7 +53,7 @@ st.write(f"Ud = {Ud_pu:.6f} pu")
 st.write(f"Uq = {Uq_pu:.6f} pu")
 
 # Step 5: Convert to Voltage
-base_voltage = 690
+base_voltage = voltage
 Ud_volts = Ud_pu * base_voltage
 Uq_volts = Uq_pu * base_voltage
 
