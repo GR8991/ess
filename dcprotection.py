@@ -45,7 +45,7 @@ st.markdown("""
 ---
 **Disclaimer:** This tool provides preliminary protection ratings based on basic electrical calculations.  
 Final device selection should be validated against manufacturer datasheets and applicable standards.
-""")'''
+""")
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -125,5 +125,133 @@ def main():
         st.success("No ground fault detected.")
 
 if __name__ == "__main__":
-    main()
+    main()'''
+import numpy as np
+import matplotlib.pyplot as plt
+import streamlit as st
+
+#── Calculation Functions ──────────────────────────────────────────────────────
+
+def calculate_protection(v_dc, p_rack, n_racks):
+    """Calculate container power, current, fuse & breaker ratings."""
+    container_power = p_rack * n_racks
+    i_rack = p_rack / v_dc
+    i_total = i_rack * n_racks
+    fuse = i_total * 1.25
+    breaker = (i_total / 0.8) * 1.25
+    return container_power, i_total, fuse, breaker
+
+def fault_current(t, i_peak, decay):
+    return i_peak * np.exp(-decay * t)
+
+def trip_time(i, rating, a, b, c):
+    return a * (i / rating)**b + c
+
+#── Streamlit Layout ──────────────────────────────────────────────────────────
+
+st.set_page_config(
+    page_title="BESS DC Protection Simulator",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Sidebar: Input Parameters
+with st.sidebar:
+    st.header("BESS Configuration")
+    v_dc = st.number_input("DC Bus Voltage (V)",  value=1331.2, format="%.1f")
+    p_rack_mw = st.number_input("Rack Power (MW)",   value=0.839, format="%.3f")
+    n_racks = st.number_input("Racks per Container", value=6, min_value=1, step=1)
+    st.markdown("---")
+    st.header("Fault Simulation")
+    i_peak = st.slider("Peak Fault Current (A)",
+                       min_value=0.0,
+                       max_value=5 * (p_rack_mw*1e6/v_dc)*n_racks,
+                       value=2 * (p_rack_mw*1e6/v_dc)*n_racks,
+                       step=100.0)
+    decay = st.slider("Decay Rate (1/s)", 0.1, 5.0, 1.0, 0.1)
+    st.markdown("---")
+    st.header("Ground Fault")
+    gf_sensitivity = st.slider("Sensitivity (A)", 0.1, 100.0, 10.0, 0.1)
+    gf_current = st.slider("Fault Current (A)", 0.0, 100.0, 0.0, 0.1)
+
+# Compute Protection Ratings
+p_rack = p_rack_mw * 1e6
+container_power, i_total, fuse_rtg, breaker_rtg = calculate_protection(v_dc, p_rack, n_racks)
+
+# Main: Tabs
+tabs = st.tabs([
+    "Protection Sizing",
+    "Fault & T–I Curves",
+    "Ground Fault Detection"
+])
+
+#── Tab 1: Protection Sizing ───────────────────────────────────────────────────
+with tabs[0]:
+    st.subheader("Container-Level DC Protection")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Total Power", f"{container_power/1e6:.3f} MW")
+        st.metric("Total Current", f"{i_total:.0f} A")
+    with col2:
+        st.metric("Fuse Rating", f"{fuse_rtg:.0f} A")
+        st.metric("Breaker Rating", f"{breaker_rtg:.0f} A")
+
+    st.markdown("""
+    > **Notes:**  
+    > - Fuse = 1.25 × I_total  
+    > - Breaker = 1.25 × (I_total/0.8)  
+    > - Voltage rating assumed ≥1500 V DC  
+    """)
+    
+#── Tab 2: Fault Simulation & Time-Current Curves ─────────────────────────────
+with tabs[1]:
+    st.subheader("Fault Current Simulation")
+    t = np.linspace(0, 5, 500)
+    i_fault = fault_current(t, i_peak, decay)
+
+    st.line_chart({
+        "Fault Current (A)": i_fault
+    }, use_container_width=True)
+
+    st.subheader("Time–Current Characteristic Curves")
+    # Example curve parameters (replace with real device data for accuracy)
+    fuse_t = trip_time(i_fault, fuse_rtg, a=0.5, b=-3.0, c=0.05)
+    breaker_t = trip_time(i_fault, breaker_rtg, a=1.0, b=-2.5, c=0.1)
+
+    fig, ax = plt.subplots()
+    ax.plot(t, fuse_t, label="Fuse Trip Time", color="blue")
+    ax.plot(t, breaker_t, label="Breaker Trip Time", color="green")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Trip Time (s)")
+    ax.set_title("Time–Current Curves")
+    ax.legend()
+    ax.grid(True)
+    st.pyplot(fig)
+
+    st.markdown("""
+    *Curve model: \(t = a \,(I/I_r)^b + c\)*  
+    Replace \(a,b,c\) with manufacturer’s curve data for precise coordination.
+    """)
+
+#── Tab 3: Ground Fault Detection ──────────────────────────────────────────────
+with tabs[2]:
+    st.subheader("Ground Fault Simulation")
+    st.write(f"Detection Threshold: **{gf_sensitivity:.1f} A**")
+    if gf_current >= gf_sensitivity:
+        st.error(f"⚠️ Ground fault detected! Fault current = {gf_current:.1f} A")
+    else:
+        st.success(f"No ground fault. Simulated = {gf_current:.1f} A")
+
+    st.markdown("""
+    - Use residual-current monitors or differential sensors on the DC bus.  
+    - Trip the DC breaker or isolate the faulty string upon detection.
+    """)
+
+#── Footer ─────────────────────────────────────────────────────────────────────
+st.markdown("---")
+st.caption("""
+**Disclaimer:** This app provides preliminary calculations and visualizations.  
+For final design, validate with detailed fault studies, device datasheets, and applicable standards (IEC/IEEE).
+""")
+
 
