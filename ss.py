@@ -53,7 +53,7 @@ st.write(f"Ud = {Ud_pu:.6f} pu")
 st.write(f"Uq = {Uq_pu:.6f} pu")
 
 # Step 5: Convert to Voltage
-base_voltage = voltage
+base_voltage = Voltage
 Ud_volts = Ud_pu * base_voltage
 Uq_volts = Uq_pu * base_voltage
 
