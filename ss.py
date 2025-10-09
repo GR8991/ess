@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 
-st.title("PGR-Ud & Uq Calculator for PCS (690V Base)")
+st.title("PGR-Ud & Uq Calculator for PCS")
 
 st.sidebar.header("Input Power Requirements")
 P_pcs = st.sidebar.number_input("Active Power P_pcs (MW)", value=50.0, format="%.3f")
