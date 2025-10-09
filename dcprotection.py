@@ -271,10 +271,10 @@ def interpolate_time_current(I_by_Ir, data_points):
 
 def calculate_protection(v_dc, p_rack, n_racks):
     container_power = p_rack * n_racks
-    i_rack = p_rack / v_dc
+    i_rack = p_rack / v_dc if v_dc > 0 else 0
     i_total = i_rack * n_racks
     fuse = i_total * 1.25
-    breaker = (i_total / 0.8) * 1.25
+    breaker = (i_total / 0.8) * 1.25 if i_total > 0 else 0
     return container_power, i_total, fuse, breaker
 
 st.set_page_config(page_title="Enhanced BESS DC Protection", layout="wide")
@@ -289,28 +289,43 @@ I_total = I_nom * n_racks
 
 st.sidebar.markdown(f"**Nominal Current (Container Level):** {I_total:.0f} A")
 
-# Validate slider range parameters
-if I_total <= 0:
-    min_I0 = 1
-    max_I0 = 1000
-    default_I0 = 500
-else:
-    min_I0 = I_total
-    max_I0 = 5 * I_total
-    default_I0 = min(max(3 * I_total, min_I0), max_I0)
+# Calculate slider ranges with safe fallbacks
+def prepare_slider_vals(i_total):
+    if i_total <= 0:
+        min_v, max_v, default_v = 1.0, 1000.0, 500.0
+    else:
+        min_v = float(i_total)
+        max_v = float(5 * i_total)
+        default_v = float(min(max(3 * i_total, min_v), max_v))
+        if min_v >= max_v:
+            min_v, max_v, default_v = 1.0, 1000.0, 500.0
+    return min_v, max_v, default_v
 
-I0 = st.sidebar.slider("Initial Fault Current I0 (A)", min_value=min_I0, max_value=max_I0, value=default_I0, step=1000)
-A = st.sidebar.slider("Decay weight A (fast decay)", min_value=0.0, max_value=1.0, value=0.7, step=0.05)
-alpha = st.sidebar.slider("Fast Decay rate α (1/s)", min_value=1.0, max_value=10.0, value=5.0, step=0.1)
-beta = st.sidebar.slider("Slow Decay rate β (1/s)", min_value=0.01, max_value=1.0, value=0.2, step=0.01)
+min_I0, max_I0, default_I0 = prepare_slider_vals(I_total)
+
+step_size = max(1.0, (max_I0 - min_I0) / 100.0)
+
+I0 = st.sidebar.slider(
+    "Initial Fault Current I0 (A)",
+    min_value=min_I0,
+    max_value=max_I0,
+    value=default_I0,
+    step=step_size,
+    format="%.1f"
+)
+
+A = st.sidebar.slider("Decay weight A (fast decay)", 0.0, 1.0, 0.7, 0.05)
+alpha = st.sidebar.slider("Fast Decay rate α (1/s)", 1.0, 10.0, 5.0, 0.1)
+beta = st.sidebar.slider("Slow Decay rate β (1/s)", 0.01, 1.0, 0.2, 0.01)
 
 t = np.linspace(0, 5, 1000)
+
 fault_current = fault_current_biexp(t, I0, A, alpha, beta)
 
 fuse_data = [(1, 600), (1.5, 180), (2, 60), (3, 20), (5, 5), (10, 0.5)]
 breaker_data = [(1, 300), (1.2, 150), (1.5, 60), (2, 30), (3, 10), (5, 3), (10, 0.5)]
 
-rated_current = I_total * 1.25 if I_total > 0 else 1  # Avoid division by zero
+rated_current = I_total * 1.25 if I_total > 0 else 1
 I_by_Ir = fault_current / rated_current
 
 fuse_trip = interpolate_time_current(I_by_Ir, fuse_data)
