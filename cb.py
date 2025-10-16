@@ -3,92 +3,120 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import altair as alt
 import time
+import plotly.graph_objects as go
 
 # App title
-st.title("Circuit Breaker Trip Zone Visualization")
+st.title("⚡ Real-Time Circuit Breaker Trip Simulator")
 
 st.markdown("""
-Visualize the three protection zones of a circuit breaker:
-1. Instantaneous trip (Zone 1)
-2. Short-time delayed trip (Zone 2)
-3. Long-time inverse-time trip (Zone 3)
+Watch fault current evolve in real-time and see which protection zone trips the breaker.
 """)
 
-# User inputs
-freq = st.sidebar.number_input("System Frequency (Hz)", value=60, step=1)
+# Sidebar: Breaker Settings
+st.sidebar.header("⚙️ Breaker Settings")
 inst_pickup = st.sidebar.number_input("Instantaneous Pickup (kA)", value=30.0, step=1.0)
 st_pickup = st.sidebar.number_input("Short-Time Pickup (kA)", value=10.0, step=1.0)
 st_rating = st.sidebar.number_input("Short-Time Rating (kA)", value=25.0, step=1.0)
 st_delay = st.sidebar.number_input("Short-Time Delay (s)", value=3.0, step=0.5)
 lt_pickup = st.sidebar.number_input("Long-Time Pickup (A)", value=500.0, step=50.0)
-lt_curve = st.sidebar.selectbox("Inverse-Time Curve", ["Standard Inverse", "Very Inverse", "Extremely Inverse"])
 
-# Generate time series for current waveform
-duration = st.sidebar.number_input("Simulation Duration (s)", value=5.0, step=1.0)
-fs = 200  # samples per second for display
-times = np.linspace(0, duration, int(fs * duration))
-
-# Simulate a fault current event
-fault_start = st.sidebar.number_input("Fault Start Time (s)", value=1.0, step=0.5)
+# Sidebar: Fault Scenario
+st.sidebar.header("🔥 Fault Scenario")
+fault_start = st.sidebar.number_input("Fault Start Time (s)", value=1.0, step=0.1, min_value=0.1)
 fault_level = st.sidebar.number_input("Fault Current (kA)", value=20.0, step=1.0)
-current = np.zeros_like(times)
-current[times >= fault_start] = fault_level
+duration = st.sidebar.number_input("Simulation Duration (s)", value=6.0, step=1.0)
 
-# Determine trip times
-# Zone 1: instantaneous
-z1_trip = fault_start if fault_level >= inst_pickup else np.inf
+# Start simulation button
+if st.sidebar.button("▶️ Start Simulation"):
+    # Initialize
+    dt = 0.05  # time step (50 ms updates)
+    times = np.arange(0, duration, dt)
+    current_values = []
+    
+    # Placeholders
+    chart_placeholder = st.empty()
+    status_placeholder = st.empty()
+    trip_placeholder = st.empty()
+    
+    tripped = False
+    trip_time = None
+    trip_zone = None
+    
+    # Determine trip conditions
+    if fault_level >= inst_pickup:
+        trip_zone = "⚡ Zone 1: Instantaneous"
+        trip_time = fault_start + 0.05  # trips almost instantly
+    elif st_pickup <= fault_level < inst_pickup:
+        trip_zone = "⏱️ Zone 2: Short-Time Delayed"
+        trip_time = fault_start + st_delay
+    elif (fault_level * 1000) > lt_pickup:
+        trip_zone = "🐌 Zone 3: Long-Time Inverse"
+        k = 0.14  # standard inverse constant
+        Ipu = (fault_level * 1000) / lt_pickup
+        trip_time = fault_start + k / (Ipu - 1) if Ipu > 1 else np.inf
+    else:
+        trip_zone = "✅ No Trip"
+        trip_time = np.inf
+    
+    # Real-time animation loop
+    for t in times:
+        # Update current
+        if t >= fault_start:
+            I = fault_level
+        else:
+            I = 0.5  # normal load current
+        
+        current_values.append(I)
+        
+        # Check if tripped
+        if t >= trip_time and not tripped:
+            tripped = True
+            status_placeholder.error(f"🔴 BREAKER TRIPPED at {t:.2f}s | {trip_zone}")
+        
+        # Update plot
+        fig = go.Figure()
+        
+        # Current trace
+        fig.add_trace(go.Scatter(
+            x=times[:len(current_values)],
+            y=current_values,
+            mode='lines',
+            name='Fault Current',
+            line=dict(color='blue', width=3)
+        ))
+        
+        # Protection zones
+        fig.add_hline(y=inst_pickup, line_dash="dash", line_color="red", 
+                      annotation_text="Instantaneous Pickup", annotation_position="right")
+        fig.add_hline(y=st_pickup, line_dash="dash", line_color="orange",
+                      annotation_text="Short-Time Pickup", annotation_position="right")
+        fig.add_hline(y=lt_pickup/1000, line_dash="dash", line_color="green",
+                      annotation_text="Long-Time Pickup", annotation_position="right")
+        
+        # Trip marker
+        if tripped:
+            fig.add_vline(x=trip_time, line_dash="dot", line_color="red", line_width=4,
+                          annotation_text="TRIP", annotation_position="top")
+        
+        fig.update_layout(
+            title="Real-Time Fault Current",
+            xaxis_title="Time (s)",
+            yaxis_title="Current (kA)",
+            height=450,
+            showlegend=True
+        )
+        
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
+        
+        # Status update
+        if not tripped:
+            status_placeholder.info(f"⏳ Time: {t:.2f}s | Current: {I:.1f} kA | Status: Monitoring...")
+        
+        time.sleep(dt)  # real-time delay
+    
+    # Final summary
+    trip_placeholder.success("✅ Simulation Complete")
 
-# Zone 2: short-time
-z2_trip = (fault_start + st_delay) if st_pickup < fault_level <= st_rating else np.inf
-
-# Zone 3: long-time inverse-time
-# Simple inverse-time calculation: t = k * (I / Ipickup - 1)^-1
-k_map = {"Standard Inverse": 0.14, "Very Inverse": 13.5, "Extremely Inverse": 80.0}
-k = k_map[lt_curve]
-Ipu = lt_pickup / 1000.0  # convert A to kA base
-lt_trip = fault_start + k / (fault_level / Ipu - 1) if fault_level/ Ipu > 1 else np.inf
-
-# Build DataFrame
-df = pd.DataFrame({
-    "Time (s)": times,
-    "Current (kA)": current
-})
-
-# Plot waveform
-base = alt.Chart(df).mark_line().encode(
-    x="Time (s)",
-    y=alt.Y("Current (kA)", scale=alt.Scale(domain=[0, max(current.max(), st_rating*1.1)]))
-)
-
-# Mark trip zones
-zones = []
-if z1_trip < np.inf:
-    zones.append(alt.Chart(pd.DataFrame({"t": [z1_trip]}))
-                 .mark_rule(color="red", strokeDash=[4,4])
-                 .encode(x="t:Q"))
-if z2_trip < np.inf:
-    zones.append(alt.Chart(pd.DataFrame({"t": [z2_trip]}))
-                 .mark_rule(color="orange", strokeDash=[4,4])
-                 .encode(x="t:Q"))
-if lt_trip < np.inf:
-    zones.append(alt.Chart(pd.DataFrame({"t": [lt_trip]}))
-                 .mark_rule(color="blue", strokeDash=[4,4])
-                 .encode(x="t:Q"))
-
-chart = base
-for z in zones:
-    chart += z
-
-chart = chart.properties(
-    width=700, height=400, title="Fault Current and Breaker Trip Points"
-)
-
-st.altair_chart(chart, use_container_width=True)
-
-# Display trip times
-st.markdown("**Trip Times:**")
-st.write(f"Instantaneous Trip (Zone 1): {z1_trip if z1_trip<np.inf else 'Not triggered'} s")
-st.write(f"Short-Time Trip (Zone 2): {z2_trip if z2_trip<np.inf else 'Not triggered'} s")
-st.write(f"Long-Time Trip (Zone 3): {lt_trip if lt_trip<np.inf else 'Not triggered'} s")
+else:
+    st.info("👈 Configure settings in the sidebar and click **Start Simulation**")
