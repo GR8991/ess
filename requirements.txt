@@ -4,3 +4,4 @@ fpdf2
 matplotlib
 scipy
 ezdxf
+plotly
