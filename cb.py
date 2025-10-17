@@ -1,122 +1,74 @@
-# streamlit_app.py
+# transformer_designer.py
 
 import streamlit as st
 import numpy as np
-import pandas as pd
-import time
-import plotly.graph_objects as go
 
-# App title
-st.title("⚡ Real-Time Circuit Breaker Trip Simulator")
+st.title("AI-Based Transformer Design Prototype")
 
-st.markdown("""
-Watch fault current evolve in real-time and see which protection zone trips the breaker.
-""")
+# 1. User Inputs
+st.header("Input Transformer Specifications")
+hv_voltage = st.number_input("Primary (HV) Line-to-Line Voltage (V)", value=33000)
+lv_voltage = st.number_input("Secondary (LV) Line-to-Line Voltage (V)", value=690)
+mva_total  = st.number_input("Total Transformer Rating (MVA)", value=12.0, format="%.1f")
+num_lv     = st.number_input("Number of LV Windings", value=4, min_value=1, step=1)
 
-# Sidebar: Breaker Settings
-st.sidebar.header("⚙️ Breaker Settings")
-inst_pickup = st.sidebar.number_input("Instantaneous Pickup (kA)", value=30.0, step=1.0)
-st_pickup = st.sidebar.number_input("Short-Time Pickup (kA)", value=10.0, step=1.0)
-st_rating = st.sidebar.number_input("Short-Time Rating (kA)", value=25.0, step=1.0)
-st_delay = st.sidebar.number_input("Short-Time Delay (s)", value=3.0, step=0.5)
-lt_pickup = st.sidebar.number_input("Long-Time Pickup (A)", value=500.0, step=50.0)
+# On-submit
+if st.button("Design Transformer"):
+    # 2. Basic Electrical Calculations
+    hv_phase_v = hv_voltage / np.sqrt(3)
+    lv_phase_v = lv_voltage / np.sqrt(3)
+    hv_current = (mva_total * 1e6) / (np.sqrt(3) * hv_voltage)
+    mva_per_lv = mva_total / num_lv
+    lv_current = (mva_per_lv * 1e6) / (np.sqrt(3) * lv_voltage)
 
-# Sidebar: Fault Scenario
-st.sidebar.header("🔥 Fault Scenario")
-fault_start = st.sidebar.number_input("Fault Start Time (s)", value=1.0, step=0.1, min_value=0.1)
-fault_level = st.sidebar.number_input("Fault Current (kA)", value=20.0, step=1.0)
-duration = st.sidebar.number_input("Simulation Duration (s)", value=6.0, step=1.0)
+    # 3. Turns Ratio & Turns Calculation
+    turns_ratio = hv_phase_v / lv_phase_v
+    emf_const   = 4.44 * 50 * 1.7  # 4.44·f·Bmax
+    # Assume core area (cm²) from empirical scaling
+    core_area   = 400  # placeholder
+    turns_per_volt = 1 / (emf_const * core_area / 1e4)
+    hv_turns    = int(hv_phase_v * turns_per_volt)
+    lv_turns    = int(lv_phase_v * turns_per_volt)
 
-# Start simulation button
-if st.sidebar.button("▶️ Start Simulation"):
-    # Initialize
-    dt = 0.05  # time step (50 ms updates)
-    times = np.arange(0, duration, dt)
-    current_values = []
-    
-    # Placeholders
-    chart_placeholder = st.empty()
-    status_placeholder = st.empty()
-    trip_placeholder = st.empty()
-    
-    tripped = False
-    trip_time = None
-    trip_zone = None
-    
-    # Determine trip conditions
-    if fault_level >= inst_pickup:
-        trip_zone = "⚡ Zone 1: Instantaneous"
-        trip_time = fault_start + 0.05  # trips almost instantly
-    elif st_pickup <= fault_level < inst_pickup:
-        trip_zone = "⏱️ Zone 2: Short-Time Delayed"
-        trip_time = fault_start + st_delay
-    elif (fault_level * 1000) > lt_pickup:
-        trip_zone = "🐌 Zone 3: Long-Time Inverse"
-        k = 0.14  # standard inverse constant
-        Ipu = (fault_level * 1000) / lt_pickup
-        trip_time = fault_start + k / (Ipu - 1) if Ipu > 1 else np.inf
-    else:
-        trip_zone = "✅ No Trip"
-        trip_time = np.inf
-    
-    # Real-time animation loop
-    for t in times:
-        # Update current
-        if t >= fault_start:
-            I = fault_level
-        else:
-            I = 0.5  # normal load current
-        
-        current_values.append(I)
-        
-        # Check if tripped
-        if t >= trip_time and not tripped:
-            tripped = True
-            status_placeholder.error(f"🔴 BREAKER TRIPPED at {t:.2f}s | {trip_zone}")
-        
-        # Update plot
-        fig = go.Figure()
-        
-        # Current trace
-        fig.add_trace(go.Scatter(
-            x=times[:len(current_values)],
-            y=current_values,
-            mode='lines',
-            name='Fault Current',
-            line=dict(color='blue', width=3)
-        ))
-        
-        # Protection zones
-        fig.add_hline(y=inst_pickup, line_dash="dash", line_color="red", 
-                      annotation_text="Instantaneous Pickup", annotation_position="right")
-        fig.add_hline(y=st_pickup, line_dash="dash", line_color="orange",
-                      annotation_text="Short-Time Pickup", annotation_position="right")
-        fig.add_hline(y=lt_pickup/1000, line_dash="dash", line_color="green",
-                      annotation_text="Long-Time Pickup", annotation_position="right")
-        
-        # Trip marker
-        if tripped:
-            fig.add_vline(x=trip_time, line_dash="dot", line_color="red", line_width=4,
-                          annotation_text="TRIP", annotation_position="top")
-        
-        fig.update_layout(
-            title="Real-Time Fault Current",
-            xaxis_title="Time (s)",
-            yaxis_title="Current (kA)",
-            height=450,
-            showlegend=True
-        )
-        
-        chart_placeholder.plotly_chart(fig, use_container_width=True)
-        
-        # Status update
-        if not tripped:
-            status_placeholder.info(f"⏳ Time: {t:.2f}s | Current: {I:.1f} kA | Status: Monitoring...")
-        
-        time.sleep(dt)  # real-time delay
-    
-    # Final summary
-    trip_placeholder.success("✅ Simulation Complete")
+    # 4. Conductor Sizing (basic)
+    current_density = 2.5  # A/mm²
+    hv_cond_area = hv_current / current_density
+    lv_cond_area = lv_current / current_density
 
-else:
-    st.info("👈 Configure settings in the sidebar and click **Start Simulation**")
+    # 5. Display Results
+    st.subheader("Electrical & Winding Results")
+    st.write(f"• HV Phase Voltage: {hv_phase_v:,.1f} V")
+    st.write(f"• LV Phase Voltage: {lv_phase_v:,.1f} V")
+    st.write(f"• HV Line Current: {hv_current:,.1f} A")
+    st.write(f"• LV Current per Winding: {lv_current:,.1f} A")
+    st.write(f"• Turns Ratio (HV:LV): {turns_ratio:.2f}:1")
+    st.write(f"• HV Turns/Phase: {hv_turns}")
+    st.write(f"• LV Turns/Phase: {lv_turns}")
+    st.write(f"• HV Conductor Area: {hv_cond_area:,.1f} mm²")
+    st.write(f"• LV Conductor Area (per winding): {lv_cond_area:,.1f} mm²")
+
+    # 6. Optimization Placeholder
+    st.subheader("Optimization Recommendations")
+    st.info("Optimization module not yet implemented. Future ML-based suggestions will appear here.")
+
+    # 7. Export Report
+    report = f"""
+## Transformer Design Report
+
+- **HV Voltage**: {hv_voltage} V  
+- **LV Voltage**: {lv_voltage} V  
+- **Rating**: {mva_total} MVA  
+- **LV Windings**: {num_lv}  
+
+**Calculated Parameters**  
+- HV Phase Voltage: {hv_phase_v:,.1f} V  
+- LV Phase Voltage: {lv_phase_v:,.1f} V  
+- HV Current: {hv_current:,.1f} A  
+- LV Current per Winding: {lv_current:,.1f} A  
+- Turns Ratio: {turns_ratio:.2f}:1  
+- HV Turns/Phase: {hv_turns}  
+- LV Turns/Phase: {lv_turns}  
+- HV Conductor Area: {hv_cond_area:,.1f} mm²  
+- LV Conductor Area: {lv_cond_area:,.1f} mm²  
+"""
+    st.download_button("Download Design Report", report, file_name="transformer_design_report.md")
