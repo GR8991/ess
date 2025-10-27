@@ -1,7 +1,10 @@
 streamlit
-python-docx
 fpdf2
 matplotlib
 scipy
 ezdxf
-plotly
+pandas==2.1.3
+numpy==1.24.3
+plotly==5.18.0
+python-docx==0.8.11     
+openpyxl==3.10.10
