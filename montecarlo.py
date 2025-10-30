@@ -220,5 +220,5 @@ if st.button('Run Simulation'):
         label="Download Word Report",
         data=buf.getvalue(),
         file_name="BESS_MonteCarlo_Report.docx",
-        mime=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\"
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
