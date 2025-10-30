@@ -213,12 +213,13 @@ if st.button('Run Simulation'):
     axs[2].set_title('LCOS Distribution')
     st.pyplot(fig)
 
-    doc = create_word_report(df_results, {k: f\"{v[0]:.3f} to {v[1]:.3f}\" if isinstance(v, tuple) else str(v) for k, v in params.items()}, opinion_text, augmentations)
+    doc = create_word_report(df_results, {k: f"{v[0]:.3f} to {v[1]:.3f}" if isinstance(v, tuple) else str(v) for k, v in params.items()}, opinion_text, augmentations)
     buf = BytesIO()
     doc.save(buf)
     st.download_button(
-        label=\"Download Word Report\",
+        label="Download Word Report",
         data=buf.getvalue(),
-        file_name=\"BESS_MonteCarlo_Report.docx\",
+        file_name="BESS_MonteCarlo_Report.docx",
+
         mime=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\"
     )
