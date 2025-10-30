@@ -47,7 +47,12 @@ def economic_model(batt_cost_initial, batt_cost_decline, discount_rate, revenue_
 def run_simulation(n_sims, params):
     results = []
     for _ in range(n_sims):
-        sample = {key: np.random.uniform(low, high) for key, (low, high) in params.items()}
+        sample = {}
+        for key, val in params.items():
+            if isinstance(val, tuple) and len(val) == 2 and all(isinstance(x, (int, float)) for x in val):
+                sample[key] = np.random.uniform(val[0], val[1])
+            else:
+                sample[key] = val
         npv, payback, lcos = economic_model(
             sample['batt_cost_initial'],
             sample['batt_cost_decline'],
@@ -60,6 +65,7 @@ def run_simulation(n_sims, params):
         )
         results.append({'NPV': npv, 'Payback': payback, 'LCOS': lcos, **sample})
     return pd.DataFrame(results)
+
 
 def create_word_report(df, inputs, opinion):
     doc = Document()
