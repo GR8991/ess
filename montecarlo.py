@@ -156,7 +156,7 @@ def generate_opinion(df):
     return opinion
 
 # Streamlit UI
-st.title('BESS Economic Model Monte Carlo Simulation with Staged Augmentation')
+st.title('PGR-BESS Economic Model Monte Carlo Simulation with Staged Augmentation')
 
 st.sidebar.header('Simulation Parameters')
 batt_cost_initial = st.sidebar.slider('Initial Battery Cost ($/kWh)', 300, 500, (350, 450), step=10)
