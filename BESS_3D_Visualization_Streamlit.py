@@ -1,7 +1,7 @@
 # 3D BESS VISUALIZATION - STREAMLIT PYTHON APPLICATION
 ## Interactive 3D Model of Dual 55MW BESS with 3-Breaker Configuration
 
----
+
 
 ## INSTALLATION INSTRUCTIONS
 
