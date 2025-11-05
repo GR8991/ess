@@ -1,32 +1,4 @@
-# 3D BESS VISUALIZATION - STREAMLIT PYTHON APPLICATION
-## Interactive 3D Model of Dual 55MW BESS with 3-Breaker Configuration
 
-
-
-## INSTALLATION INSTRUCTIONS
-
-### Prerequisites:
-
-# Install Python 3.8 or higher
-python --version
-
-# Create virtual environment (recommended)
-python -m venv bess_viz
-source bess_viz/bin/activate  # On Windows: bess_viz\Scripts\activate
-
-# Install required packages
-pip install streamlit
-pip install plotly
-pip install numpy
-pip install pandas
-pip install matplotlib
-```
-
----
-
-## FILE 1: app.py (Main Streamlit Application)
-
-```python
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
