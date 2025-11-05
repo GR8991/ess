@@ -6,7 +6,7 @@
 ## INSTALLATION INSTRUCTIONS
 
 ### Prerequisites:
-```bash
+
 # Install Python 3.8 or higher
 python --version
 
