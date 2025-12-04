@@ -96,7 +96,7 @@ temp_C = st.sidebar.slider("Battery Temperature (°C)", -10.0, 60.0, 25.0, 1.0)
 SoC0 = st.sidebar.slider("Initial SoC (0–1)", 0.0, 1.0, 1.0, 0.01)
 t_end = st.sidebar.slider("Simulation Time (s)", 60, 7200, 3600, 60)
 dt = st.sidebar.slider("Time Step (s)", 0.1, 5.0, 1.0, 0.1)
-I_max = st.sidebar.slider("Discharge Current (A)", 10, 200, 100, 5)
+I_max = st.sidebar.slider("Discharge Current (A)", 10, 800, 100, 5)
 
 # Current profile type
 profile = st.radio("Select Profile:", ["Single Cycle", "Multi-Cycle", "Sinusoidal"], horizontal=True)
