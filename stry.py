@@ -22,7 +22,7 @@ def check_login():
     ALLOWED_EMAILS = [
         "gangaraju.p@sunstripe.com",
         "s.kt@sunstripe.com",
-        "kartik.v@sunstripe.com",
+        "kartik.v@sunstripe.",
     ]
 
     if st.button("Sign In"):
@@ -215,6 +215,7 @@ if st.button("Calculate Hardware Sizing"):
         "System C-rate = Project MW / Installed MWh\n"
         "Block C-rate = Inverter MW / DC energy per inverter"
     )
+
 
 
 
