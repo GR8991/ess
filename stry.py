@@ -21,7 +21,7 @@ def check_login():
     # ---- ALLOWED EMAIL IDS (EDIT THIS LIST) ----
     ALLOWED_EMAILS = [
         "gangaraju.p@sunstripe.com",
-        "engineer@company.com",
+        "s.kt@sunstripe.com",
         "bess.team@company.com",
     ]
 
@@ -215,4 +215,5 @@ if st.button("Calculate Hardware Sizing"):
         "System C-rate = Project MW / Installed MWh\n"
         "Block C-rate = Inverter MW / DC energy per inverter"
     )
+
 
